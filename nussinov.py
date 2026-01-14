@@ -1,9 +1,49 @@
 from collections import defaultdict
 from utils import print_dict_grid
 
+
 def pair_matches(x: str, y: str) -> bool:
     """Checks if given pair is RNA complimentary"""
     return tuple(sorted([x, y])) == ("A", "U") or tuple(sorted([x, y])) == ("C", "G")
+
+
+def print_rna_secondary_structure(sequence, pairs):
+    # start with all dots
+    structure = ["."] * len(sequence)
+
+    # fill in the brackets for each pair
+    for i, j in pairs:
+        # We use min/max to ensure i is the opening and j is the closing
+        start, end = min(i, j), max(i, j)
+        structure[start] = "("
+        structure[end] = ")"
+
+    print("".join(structure))
+
+
+def traceback(i: int, j: int, F: defaultdict, s: str) -> list[tuple[int, int]]:
+    if i >= j:
+        return []  # Base case: no more pairs possible
+
+    # 1. Check if j is unpaired
+    if F[(i, j)] == F.get((i, j - 1), 0):
+        return traceback(i, j - 1, F, s)
+
+    # 2. Check if i is unpaired
+    if F[(i, j)] == F.get((i + 1, j), 0):
+        return traceback(i + 1, j, F, s)
+
+    # 3. Check if i,j is a pair
+    if pair_matches(s[i], s[j]):
+        if F[(i, j)] == F.get((i + 1, j - 1), 0) + 1:
+            return [(i, j)] + traceback(i + 1, j - 1, F, s)
+
+    # 4. Check for bifurcation
+    for k in range(i + 1, j):
+        if F[(i, j)] == F.get((i, k), 0) + F.get((k + 1, j), 0):
+            return traceback(i, k, F, s) + traceback(k + 1, j, F, s)
+
+    return []
 
 
 def nussinov(s: str):
@@ -18,6 +58,7 @@ def nussinov(s: str):
 
     Fill in the top-right half, expanding from main diagonal.
     Expanding from main diagonal corresponds with starting with many small intervals, gradually increasing the interval length.
+    Optimal score is the top right cell.
 
     Filling in grid is mostly O(n^2), but bifurication case makes it O(n^3).
     """
@@ -39,9 +80,9 @@ def nussinov(s: str):
                 bifurication_case = max(bifurication_case, F[(i, k)] + F[((k + 1, j))])
             match_reward = 1 if pair_matches(s[i], s[j]) else -float("inf")
             F[(i, j)] = max(
-                F[(i - 1, j)],
+                F[(i + 1, j)],
                 F[(i, j - 1)],
-                F[(i - 1, j - 1)] + match_reward,
+                F[(i + 1, j - 1)] + match_reward,
                 bifurication_case,
             )
 
@@ -49,7 +90,10 @@ def nussinov(s: str):
 
 
 if __name__ == "__main__":
-    s = "GGGAAAUCC"
+    s = "AAUCUGUUACGCA"
     F = nussinov(s)
-
+    n = len(s)
+    pairs = traceback(0, n - 1, F, s)
     print_dict_grid(F)
+    print(s)
+    print_rna_secondary_structure(s, pairs)
