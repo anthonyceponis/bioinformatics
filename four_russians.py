@@ -30,9 +30,8 @@ def construct_lcs_grid(
 
 
 def offset_vectors_generator(t, current_vector=[]):
-    """
-    Generates all possible offset vectors of length t, where each element is 0 or 1.
-    """
+    """Generates all possible offset vectors of length t, where each element is 0 or 1."""
+
     if len(current_vector) == t:
         yield tuple(current_vector)
         return
